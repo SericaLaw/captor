@@ -1,23 +1,18 @@
-//
-// Created by serica on 10/23/21.
-//
-
 #include <iostream>
-#include <string>
-#include <unistd.h>
 #include <cstring>
 #include <netinet/in.h>
 
 using namespace std;
 
-#include "lib/tcp_client.h"
+#include "tcp_client.h"
+
 
 int main() {
     TcpClient client;
     TcpConnection conn = client.connect("127.0.0.1", 8888);
-    conn.send("hello 1");
-    conn.send(" hello 2\n");
-    cout << "client received: " << conn.receive_line();
+    conn.blocking_send("hello 1");
+    conn.blocking_send(" hello 2\n");
+    cout << "client received: " << conn.blocking_receive_line();
 
     struct {
         u_int32_t f1_length;
@@ -26,7 +21,8 @@ int main() {
     } message;
     message.f1_length = htonl(14);
     message.f2_length = htonl(14);
-    conn.send_n((char *) &message, sizeof(message.f1_length) + sizeof(message.f2_length) + strlen(message.data));
+    conn.blocking_send_n((char *) &message,
+                         sizeof(message.f1_length) + sizeof(message.f2_length) + strlen(message.data));
 
     conn.close();
 }

@@ -4,7 +4,7 @@ project(network_101)
 set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(lib)
-include_directories(lib lib/reactor)
+include_directories(lib lib/reactor lib/buffer)
 
 add_executable(test_server.out test_server.cpp)
 add_executable(test_client.out test_client.cpp)
@@ -23,3 +23,6 @@ target_link_libraries(simple_epoll_reactor.out network_101)
 
 add_executable(reactor_with_dispatcher.out reactor_with_dispatcher.cpp)
 target_link_libraries(reactor_with_dispatcher.out network_101)
+
+add_executable(reactor_multithread.out reactor_multithread.cpp)
+target_link_libraries(reactor_multithread.out network_101 pthread)

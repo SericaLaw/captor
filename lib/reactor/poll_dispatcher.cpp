@@ -1,9 +1,11 @@
 #include <sys/poll.h>
 #include <iostream>
 #include <cstring>
+
 using namespace std;
 
 #include "dispatcher.h"
+
 
 PollDispatcher::PollDispatcher() {
     _events = vector<struct pollfd>(DISPATCHER_MAX_EVENTS);
@@ -12,13 +14,13 @@ PollDispatcher::PollDispatcher() {
     }
 }
 
-bool PollDispatcher::add(const struct Channel &channel) {
-    int fd = channel.fd;
+bool PollDispatcher::add(const Channel *channel) {
+    int fd = channel->fd();
     int events = 0;
-    if (channel.readable()) {
+    if (channel->readable()) {
         events |= POLLRDNORM;
     }
-    if (channel.writable()) {
+    if (channel->writable()) {
         events |= POLLWRNORM;
     }
 
@@ -37,8 +39,8 @@ bool PollDispatcher::add(const struct Channel &channel) {
     return true;
 }
 
-bool PollDispatcher::remove(const struct Channel &channel) {
-    int fd = channel.fd;
+bool PollDispatcher::remove(const Channel *channel) {
+    int fd = channel->fd();
 
     int i;
     for (i = 0; i < DISPATCHER_MAX_EVENTS; i++) {
@@ -54,13 +56,13 @@ bool PollDispatcher::remove(const struct Channel &channel) {
     return true;
 }
 
-bool PollDispatcher::update(const struct Channel &channel) {
-    int fd = channel.fd;
+bool PollDispatcher::update(const Channel *channel) {
+    int fd = channel->fd();
     int events = 0;
-    if (channel.readable()) {
+    if (channel->readable()) {
         events |= POLLRDNORM;
     }
-    if (channel.writable()) {
+    if (channel->writable()) {
         events |= POLLWRNORM;
     }
 
@@ -80,7 +82,7 @@ bool PollDispatcher::update(const struct Channel &channel) {
 
 vector<struct DispatcherEvent> PollDispatcher::dispatch() {
     int n_ready;
-    if ((n_ready = poll(_events.data(), DISPATCHER_MAX_EVENTS, -1)) < 0) {
+    if ((n_ready = poll(_events.data(), DISPATCHER_MAX_EVENTS, 1000)) < 0) {
         cerr << "PollDispatcher dispatch error: " << strerror(errno) << endl;
         exit(1);
     }
@@ -107,5 +109,5 @@ vector<struct DispatcherEvent> PollDispatcher::dispatch() {
             }
         }
     }
-    return move(ret);
+    return ret;
 }

@@ -1,7 +1,6 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <iostream>
-#include <string>
 #include <vector>
 #include <cstring>
 
@@ -9,7 +8,9 @@ using namespace std;
 
 #include "lib/tcp_listener.h"
 
+
 const int MAX_EVENTS = 128;
+
 int main() {
     int efd;
 
@@ -53,13 +54,13 @@ int main() {
             } else {
                 TcpConnection conn{events[i].data.fd};
                 string msg;
-                if (!(msg = conn.receive_line()).empty()) {
+                if (!(msg = conn.blocking_receive_line()).empty()) {
                     cout << "server received: " << msg;
-                    conn.send(msg);
+                    conn.blocking_send(msg);
                 } else {
+                    epoll_ctl(efd, EPOLL_CTL_DEL, events[i].data.fd, &events[i]);
                     conn.close();
                     cout << "server closed conn_fd: " << events[i].data.fd << endl;
-                    epoll_ctl(efd, EPOLL_CTL_DEL, events[i].data.fd, &events[i]);
                 }
             }
         }

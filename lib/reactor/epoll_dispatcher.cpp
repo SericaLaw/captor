@@ -3,9 +3,11 @@
 #include <cstring>
 #include <vector>
 #include <unistd.h>
+
 using namespace std;
 
 #include "dispatcher.h"
+
 
 EpollDispatcher::EpollDispatcher() {
     _efd = epoll_create1(EPOLL_CLOEXEC);
@@ -16,7 +18,7 @@ EpollDispatcher::EpollDispatcher() {
     _events = std::vector<struct epoll_event>(DISPATCHER_MAX_EVENTS);
 }
 
-bool EpollDispatcher::add(const Channel &channel) {
+bool EpollDispatcher::add(const Channel *channel) {
     if (do_epoll_ctl(EPOLL_CTL_ADD, channel) == -1) {
         cerr << "EpollDispatcher add failed: " << strerror(errno) << endl;
         exit(1);
@@ -24,7 +26,7 @@ bool EpollDispatcher::add(const Channel &channel) {
     return true;
 }
 
-bool EpollDispatcher::remove(const Channel &channel) {
+bool EpollDispatcher::remove(const Channel *channel) {
     if (do_epoll_ctl(EPOLL_CTL_DEL, channel) == -1) {
         cerr << "EpollDispatcher remove failed: " << strerror(errno) << endl;
         exit(1);
@@ -32,7 +34,7 @@ bool EpollDispatcher::remove(const Channel &channel) {
     return true;
 }
 
-bool EpollDispatcher::update(const Channel &channel) {
+bool EpollDispatcher::update(const Channel *channel) {
     if (do_epoll_ctl(EPOLL_CTL_MOD, channel) == -1) {
         cerr << "EpollDispatcher update failed: " << strerror(errno) << endl;
         exit(1);
@@ -41,7 +43,7 @@ bool EpollDispatcher::update(const Channel &channel) {
 }
 
 vector<struct DispatcherEvent> EpollDispatcher::dispatch() {
-    int n_ready = epoll_wait(_efd, _events.data(), DISPATCHER_MAX_EVENTS, -1);
+    int n_ready = epoll_wait(_efd, _events.data(), DISPATCHER_MAX_EVENTS, 1000);
     vector<struct DispatcherEvent> ret;
     for (int i = 0; i < n_ready; i++) {
         int fd = _events[i].data.fd;
@@ -65,17 +67,18 @@ vector<struct DispatcherEvent> EpollDispatcher::dispatch() {
             ret.push_back(DispatcherEvent{fd, revents});
         }
     }
-    return move(ret);
+    return ret;
 }
 
-int EpollDispatcher::do_epoll_ctl(int op, const Channel &channel) const {
-    int fd = channel.fd;
-    int events = 0;
-    if (channel.readable()) {
+int EpollDispatcher::do_epoll_ctl(int op, const Channel *channel) const {
+    int fd = channel->fd();
+    cout << "EpollDispatcher do_epoll_ctl fd=" << fd << endl;
+    int events = EPOLLET;   // edge-triggered
+    if (channel->readable()) {
         cout << "channel readable\n";
         events |= EPOLLIN;
     }
-    if (channel.writable()) {
+    if (channel->writable()) {
         cout << "channel writable\n";
         events |= EPOLLOUT;
     }

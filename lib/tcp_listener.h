@@ -15,6 +15,7 @@ public:
 
     ~TcpListener() = default;
 
+private:
     int _listen_fd{-1};
 };
 

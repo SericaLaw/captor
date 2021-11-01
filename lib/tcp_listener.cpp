@@ -7,8 +7,7 @@
 #include <iostream>
 #include <fcntl.h>
 
-using std::cerr;
-using std::endl;
+using namespace std;
 
 #include "tcp_listener.h"
 
@@ -32,14 +31,14 @@ void TcpListener::listen(int port, bool non_blocking) {
     int on = 1;
     setsockopt(_listen_fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
-    int rt1 = bind(_listen_fd, (struct sockaddr *) &server_addr, sizeof(server_addr));
-    if (rt1 < 0) {
-        cerr << "TcpServer listen error: " << strerror(errno) << endl;
+    int err = bind(_listen_fd, (struct sockaddr *) &server_addr, sizeof(server_addr));
+    if (err < 0) {
+        cerr << "TcpServer bind error: " << strerror(errno) << endl;
         exit(1);
     }
 
-    int rt2 = ::listen(_listen_fd, 1024);
-    if (rt2 < 0) {
+    err = ::listen(_listen_fd, 1024);
+    if (err < 0) {
         cerr << "TcpServer listen error: " << strerror(errno) << endl;
         exit(1);
     }

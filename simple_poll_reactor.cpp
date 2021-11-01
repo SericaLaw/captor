@@ -1,7 +1,6 @@
 #include <sys/poll.h>
 #include <unistd.h>
 #include <iostream>
-#include <string>
 #include <vector>
 #include <cstring>
 #include <functional>
@@ -10,6 +9,7 @@
 using namespace std;
 
 #include "lib/tcp_listener.h"
+
 
 const int MAX_EVENTS = 128;
 
@@ -23,6 +23,7 @@ public:
             events[i].fd = -1;
         }
     }
+
     void add_event(int sock_fd, short e) {
         int i;
         for (i = 0; i < MAX_EVENTS; i++) {
@@ -36,6 +37,7 @@ public:
             cerr << "PollController add_event error: can not hold so many clients\n";
         }
     }
+
     void remove_event(int sock_fd) {
         int i = 0;
         for (i = 0; i < MAX_EVENTS; i++) {
@@ -53,23 +55,23 @@ public:
 struct Channel {
     int fd;
 
-    function<void(int, short, PollController&, unordered_map<int, Channel>&)> read_callback;
+    function<void(int, PollController&, unordered_map<int, Channel>&)> read_callback;
 
     void on_event(short events, PollController &controller, unordered_map<int, Channel> &channel_map) {
         cout << "on event with sock_fd: " << fd << endl;
         if ((events & POLLRDNORM) && (read_callback != nullptr)) {
-            read_callback(fd, events, controller, channel_map);
+            read_callback(fd, controller, channel_map);
         }
     }
 };
 
-void read_callback(int conn_fd, short events, PollController &controller, unordered_map<int, Channel> &channel_map) {
+void read_callback(int conn_fd, PollController &controller, unordered_map<int, Channel> &channel_map) {
     cout << "in read callback\n";
     TcpConnection conn{conn_fd};
     string msg;
-    if (!(msg = conn.receive_line()).empty()) {
+    if (!(msg = conn.blocking_receive_line()).empty()) {
         cout << "server received: " << msg;
-        conn.send(msg);
+        conn.blocking_send(msg);
     } else {
         conn.close();
         cout << "server closed conn_fd: " << conn_fd << endl;
@@ -78,7 +80,7 @@ void read_callback(int conn_fd, short events, PollController &controller, unorde
     }
 }
 
-void accept_callback(int listen_fd, short events, PollController &controller, unordered_map<int, Channel> &channel_map) {
+void accept_callback(int listen_fd, PollController &controller, unordered_map<int, Channel> &channel_map) {
     TcpListener listener{listen_fd};
     TcpConnection conn = listener.accept();
     conn.set_nonblocking();

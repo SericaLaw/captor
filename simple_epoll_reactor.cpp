@@ -1,7 +1,6 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <iostream>
-#include <string>
 #include <vector>
 #include <cstring>
 #include <functional>
@@ -10,36 +9,35 @@ using namespace std;
 
 #include "lib/tcp_listener.h"
 
+
 const int MAX_EVENTS = 128;
 
 struct Channel {
     int fd;
-    int efd;
+    function<void(int, int)> read_callback;
 
-    function<void(int, int, uint32_t)> read_callback;
-
-    void on_event(uint32_t events) {
+    void on_event(uint32_t events, int efd) {
         if ((events & EPOLLIN) && (read_callback != nullptr)) {
-            read_callback(fd, efd, events);
+            read_callback(fd, efd);
         }
     }
 };
 
-void read_callback(int conn_fd, int efd, uint32_t events) {
+void read_callback(int conn_fd, int efd) {
     TcpConnection conn{conn_fd};
     string msg;
-    if (!(msg = conn.receive_line()).empty()) {
+    if (!(msg = conn.blocking_receive_line()).empty()) {
         cout << "server received: " << msg;
-        conn.send(msg);
+        conn.blocking_send(msg);
     } else {
-        conn.close();
-        cout << "server closed conn_fd: " << conn_fd << endl;
         struct epoll_event event{};
         epoll_ctl(efd, EPOLL_CTL_DEL, conn_fd, &event);
+        conn.close();
+        cout << "server closed conn_fd: " << conn_fd << endl;
     }
 }
 
-void accept_callback(int listen_fd, int efd, uint32_t events) {
+void accept_callback(int listen_fd, int efd) {
     TcpListener listener{listen_fd};
     TcpConnection conn = listener.accept();
     conn.set_nonblocking();
@@ -48,7 +46,7 @@ void accept_callback(int listen_fd, int efd, uint32_t events) {
     struct epoll_event event{};
 
     event.events = EPOLLIN | EPOLLET;
-    struct Channel *channel = new Channel{conn_fd, efd, read_callback};
+    struct Channel *channel = new Channel{conn_fd, read_callback};
     event.data.ptr = channel;
     if (epoll_ctl(efd, EPOLL_CTL_ADD, conn_fd, &event) == -1) {
         cerr << "epoll_ctl add failed: " << strerror(errno) << endl;
@@ -72,7 +70,7 @@ int main() {
     }
 
     event.events = EPOLLIN | EPOLLET;
-    struct Channel *acceptor = new Channel{listener.listen_fd(), efd, accept_callback};
+    struct Channel *acceptor = new Channel{listener.listen_fd(), accept_callback};
     event.data.ptr = acceptor;
 
     if (epoll_ctl(efd, EPOLL_CTL_ADD, listener.listen_fd(), &event) == -1) {
@@ -95,7 +93,7 @@ int main() {
                     cout << "epoll in\n";
                 }
                 struct Channel *channel = (Channel *) events[i].data.ptr;
-                channel->on_event(events[i].events);
+                channel->on_event(events[i].events, efd);
             }
         }
     }

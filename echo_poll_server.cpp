@@ -9,6 +9,7 @@ using namespace std;
 
 #include "tcp_listener.h"
 
+
 const int MAX_EVENTS = 128;
 
 int main() {
@@ -66,9 +67,9 @@ int main() {
             } else if (events[i].revents & (POLLRDNORM | POLLERR)) {
                 TcpConnection conn{conn_fd};
                 string msg;
-                if (!(msg = conn.receive_line()).empty()) {
+                if (!(msg = conn.blocking_receive_line()).empty()) {
                     cout << "server received: " << msg;
-                    conn.send(msg);
+                    conn.blocking_send(msg);
                 } else {
                     conn.close();
                     cout << "server closed conn_fd: " << conn_fd << endl;
